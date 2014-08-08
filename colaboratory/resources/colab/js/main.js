@@ -172,7 +172,7 @@ colab.preferences = null;
  */
 colab.getDefaultKernelUrl = function() {
   var port = location.port || '8888';
-  return location.protocol + '//127.0.0.1:' + port;
+  return location.protocol + '//colab.pinadmin.com:' + port;
 };
 
 

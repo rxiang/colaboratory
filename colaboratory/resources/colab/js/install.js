@@ -19,7 +19,7 @@ colab.install.FILE_SCOPE = 'https://www.googleapis.com/auth/drive';
  *
  * @type {string}
  */
-colab.install.CLIENT_ID = '24495343215-m2uip5p987oi948dikp8khomucgt1b5h' +
+colab.install.CLIENT_ID = '691922180140-b67r6ajtiks1ca777g6nqhm5fairqp1f' +
     '.apps.googleusercontent.com';
 
 
