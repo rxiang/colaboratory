@@ -3,6 +3,7 @@ import errno
 import json
 import os
 import shutil
+import subprocess
 import sys
 
 import IPython.html
@@ -19,9 +20,42 @@ args = parser.parse_args()
 
 RELEASE_CLIENT_ID = "911569945122-0tcrnl8lnu5b0ccgpp92al27pplahn5a.apps.googleusercontent.com"
 
-NACL_PEXE_FILE_URL = "http://yt-project.org/upload/kernel.pexe"
-NACL_TAR_FILE_URL = "http://yt-project.org/upload/zeropy_20140520.tar.gz"
+RELEASE = "20140805"
+base_url = "http://yt-project.org/files/colaboratory/%s/" % RELEASE
+NACL_PEXE_FILE_URL = base_url + "kernel.pexe"
+NACL_TAR_FILE_URL = base_url + "pnacl_data.tar.gz"
 
+
+def UpdateTarFile(tar_file, colabtools_src_dir, tmp_dir):
+  """Updates the tar resources file.
+
+  Untar/zip's the resources file, adds colabtools to the site-packages,
+  and rezip/tar's the file.
+
+  args:
+    tar_file: the filename of the .tar.gz file
+    colabtools_src_dir: source directory of colabtools (should end in /colabtools)
+    tmp_dir: temporary directory to unzip tar file contents to.  Cleanup
+        of this directory is the responsibility of the caller.
+  """
+
+  with open(os.devnull, 'w') as devnull:
+    if subprocess.call(['tar', '-zxvf', tar_file, '-C', tmp_dir],
+      stdout=devnull, stderr=devnull):
+      raise RuntimeError('Failed to extract tar file')
+
+  # Copy colabtools directory to site-pacakges directory in
+  # tar'ed resources.
+  colabtools_dest_dir = pjoin(tmp_dir, 'lib', 'python2.7', 'site-packages', 'colabtools')
+  RemoveFileOrDirectoryIfExist(colabtools_dest_dir)
+  MakeDirectoryIfNotExist(colabtools_dest_dir)
+  CopyTreeRecursively(colabtools_src_dir, colabtools_dest_dir)
+
+  # Overwrite original tar file
+  with open(os.devnull, 'w') as devnull:
+    if subprocess.call(['tar', '-zcvf', tar_file, '-C', tmp_dir, '.'],
+      stdout=devnull, stderr=devnull):
+      raise RuntimeError('Failed to update tar file')
 
 
 def InstallChrome(release, colab_root, dest):
@@ -45,7 +79,7 @@ def InstallChrome(release, colab_root, dest):
   # Download .pexe and .tar.gz files.  Later these will be pulled
   # from the naclports continuous builder
   pexe_file = pjoin(dest, 'pnacl', 'kernel.pexe')
-  tar_file = pjoin(dest, 'zeropy_20140520.tar.gz')
+  tar_file = pjoin(dest, 'pnacl_data.tar.gz')
   url_opener = urllib.URLopener()
   if not os.path.isfile(pexe_file):
     print 'Downloading ' + NACL_PEXE_FILE_URL
@@ -53,6 +87,13 @@ def InstallChrome(release, colab_root, dest):
   if not os.path.isfile(tar_file):
     print 'Downloading ' + NACL_TAR_FILE_URL
     url_opener.retrieve(NACL_TAR_FILE_URL, tar_file)
+
+  tmp_resources_dir = pjoin(dest, 'tmp_pnacl_resources')
+  colabtools_src_dir = pjoin(colab_root, 'colabtools')
+  MakeDirectoryIfNotExist(tmp_resources_dir)
+  UpdateTarFile(tar_file, colabtools_src_dir, tmp_resources_dir)
+  RemoveFileOrDirectoryIfExist(tmp_resources_dir)
+
 
   if release:
     # In release mode, we must change client IDS

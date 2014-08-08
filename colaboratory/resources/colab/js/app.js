@@ -12,6 +12,7 @@
 
 goog.provide('colab.app');
 
+goog.require('colab.notification');
 goog.require('colab.params');
 goog.require('goog.Promise');
 
@@ -117,7 +118,7 @@ colab.app.postMessage = function(msgType, opt_content, opt_callback) {
  * scopes other than the full set of scopes granted to the App.
  *
  * @param {boolean} immediate  Whether to return immediately or show prompt
- * @param {Function} opt_callback Callback when authorization is complete
+ * @param {Function=} opt_callback Callback when authorization is complete
  */
 colab.app.authorize = function(immediate, opt_callback) {
   colab.app.postMessage('access_token', {'immediate': immediate});
@@ -128,14 +129,39 @@ colab.app.authorize = function(immediate, opt_callback) {
         opt_callback();
       }
       return;
-    }
-
-    if (content['token']) {
-      gapi.auth.setToken({'access_token': content['token']});
+    } else {
+      gapi.auth.setToken(content);
       if (opt_callback) {
         // TODO(kestert): figure out which args to pass to callback.
         opt_callback('success');
       }
     }
   });
+};
+
+
+/**
+ * Minimum version of Chrome that allows for mounting local directories in
+ * PNaCl.
+ * @type {string}
+ */
+colab.app.MOUNT_LOCAL_DIRECTORY_MIN_CHROME_VERSION = '38.0.2091.2';
+
+
+/**
+ * Check the Chrome browser version is greater than or equal to the specified
+ * version, and display a warning if it is.
+ *
+ * @param {string} minVersion The minimum browser version required.
+ * @return {boolean} True if the browser version was greater than or equal to
+ *     the minimum required version.
+ */
+colab.app.checkVersionAndWarnUser = function(minVersion) {
+  if (window.navigator.appVersion.match('Chrome\/(.*?) ')[1] < minVersion) {
+    var message = ('This feature requires Chrome version ' + minVersion +
+        ' or higher.');
+    colab.notification.showPrimary(message);
+    return false;
+  }
+  return true;
 };

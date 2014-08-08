@@ -8,13 +8,13 @@ goog.provide('colab.filepicker');
 
 goog.require('colab.app');
 
+
 /**
  * Public developer key. Used by picker.
  *
  * @see https://console.developers.google.com/\
  *   project/apps~colab-sandbox/apiui/credential
  * @type {string}
- * @const
  */
 colab.filepicker.PUBLIC_DEVELOPER_KEY =
     'AIzaSyCoDfWuxLxqqLWfKVNqfHy7DIWudoPTeuk';
@@ -24,7 +24,6 @@ colab.filepicker.PUBLIC_DEVELOPER_KEY =
  * App ID for Web App (this is a substring of the client ID).
  *
  * @type {string}
- * @const
  */
 colab.filepicker.WEB_APP_KEY =
     'm2uip5p987oi948dikp8khomucgt1b5h';
@@ -36,15 +35,16 @@ colab.filepicker.WEB_APP_KEY =
  * @see https://console.developers.google.com/\
  *   project/apps~windy-ellipse-510/apiui/credential
  * @type {string}
- * @const
  */
 colab.filepicker.CHROME_APP_KEY =
     '0tcrnl8lnu5b0ccgpp92al27pplahn5a';
+
 
 /**
  * Upon successful file selection calls callback with
  * @param {function(Object)} cb Object is an instance of
  * google.picker.Response
+ * TODO: add sample notebooks directory
  */
 colab.filepicker.selectFile = function(cb) {
   gapi.load('picker', function() {
@@ -54,13 +54,7 @@ colab.filepicker.selectFile = function(cb) {
     view.setQuery('ipynb');
     view.setIncludeFolders(true).setSelectFolderEnabled(false);
     view.setLabel('Everything');
-    var samples = new google.picker.DocsView();
-    samples.setMode(google.picker.DocsViewMode.LIST);
 
-    // List sample notebooks
-// TODO(colab-team): add sample notebooks for open repo. Put directory link here.
-//    samples.setParent('Parent ID');
-    samples.setLabel('Sample Notebooks');
     var byMe = new google.picker.DocsView();
     byMe.setOwnedByMe(true);
     byMe.setMode(google.picker.DocsViewMode.LIST);
@@ -75,18 +69,21 @@ colab.filepicker.selectFile = function(cb) {
         google.picker.ViewId.RECENTLY_PICKED);
     recentlyPicked.setMimeTypes(mimeTypes);
 
-    // List sample notebooks
-    var upload = new google.picker.DocsUploadView();
+    var token = gapi.auth.getToken();
 
     var picker = new google.picker.PickerBuilder()
         .addView(recentlyPicked)
         .addView(view)
         .addView(byMe)
-        // .addView(samples)
-        .addView(upload)
-        .setOAuthToken(gapi.auth.getToken().access_token)
+        .setOAuthToken(token.access_token)
         .setSelectableMimeTypes(mimeTypes)
         .setCallback(cb);
+
+    // Add upload tab if the OAuth scope allows uploading.
+    if (token.scope.split(' ').indexOf(colab.scope.FILE_SCOPE) != -1) {
+        var upload = new google.picker.DocsUploadView();
+        picker.addView(upload);
+    }
 
     if (colab.app.appMode) {
       picker.setAppId(colab.filepicker.CHROME_APP_KEY);
@@ -98,6 +95,7 @@ colab.filepicker.selectFile = function(cb) {
     dlg.setVisible(true);
   });
 };
+
 
 /**
  * Upon successful file selection calls callback with
@@ -127,6 +125,7 @@ colab.filepicker.selectDir = function(cb) {
     dlg.setVisible(true);
   });
 };
+
 
 /**
  * Selects a file and reloads colab on success.
